@@ -1,0 +1,14 @@
+{
+  "name": "finally-e2e",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Playwright E2E suite for the FinAlly trading workstation.",
+  "scripts": {
+    "test": "playwright test",
+    "report": "playwright show-report",
+    "server": "node scripts/start-backend.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.1"
+  }
+}
