@@ -1,0 +1,32 @@
+# Optional convenience wrapper for running FinAlly locally.
+#   docker compose up --build
+# Reads secrets/config from .env (see .env.example).
+
+services:
+  finally:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: finally:latest
+    container_name: finally
+    ports:
+      - "8000:8000"
+    # Loads OPENROUTER_API_KEY / MASSIVE_API_KEY / LLM_MOCK from .env.
+    env_file:
+      - .env
+    environment:
+      # Ensure the DB lands in the mounted volume regardless of .env contents.
+      FINALLY_DB_PATH: /app/db/finally.db
+    volumes:
+      # Named volume persists the SQLite database across restarts/rebuilds.
+      - finally-data:/app/db
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0) if urllib.request.urlopen('http://localhost:8000/api/health', timeout=3).status==200 else sys.exit(1)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+volumes:
+  finally-data:

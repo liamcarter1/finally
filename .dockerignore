@@ -1,0 +1,59 @@
+# Keep the build context lean and the image small.
+
+# VCS / IDE / CI
+.git
+.gitignore
+.github
+.idea
+.vscode
+.claude
+
+# Docs & planning (not needed at build time)
+planning
+*.md
+!backend/README.md
+!frontend/README.md
+LICENSE
+
+# Root-level docker/compose/scripts (not copied into the image)
+docker-compose.yml
+test
+scripts
+deploy
+
+# Environment files (never bake secrets into the image)
+.env
+.env.*
+!.env.example
+
+# Runtime SQLite data (created in the named volume at runtime)
+db
+**/*.db
+**/*.sqlite
+**/*.sqlite3
+
+# Python build/test artifacts
+**/__pycache__
+**/*.py[cod]
+**/.venv
+**/venv
+**/.pytest_cache
+**/.ruff_cache
+**/.mypy_cache
+**/.coverage
+**/htmlcov
+**/.cache
+backend/tests
+
+# Node / Next.js artifacts (rebuilt inside the image)
+**/node_modules
+**/.next
+**/out
+**/dist
+**/build
+**/.turbo
+**/npm-debug.log*
+
+# OS cruft
+.DS_Store
+Thumbs.db

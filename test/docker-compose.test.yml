@@ -1,0 +1,58 @@
+# E2E test infrastructure for FinAlly.
+#
+# Brings up the application container in a deterministic, offline-friendly mode:
+#   - LLM_MOCK=true        -> deterministic canned LLM responses (no OpenRouter)
+#   - MASSIVE_API_KEY=""   -> built-in market simulator (no external data calls)
+#   - ephemeral SQLite (tmpfs) -> every run starts from a fresh, seeded DB
+#
+# A Playwright runner (added by the Integration Tester, or run separately)
+# targets http://app:8000 inside this network, or http://localhost:8000 from the host.
+#
+# Usage:
+#   docker compose -f test/docker-compose.test.yml up --build -d
+#   # ... run Playwright against http://localhost:8000 ...
+#   docker compose -f test/docker-compose.test.yml down -v
+
+services:
+  app:
+    build:
+      # Build context is the repo root (one level up from test/).
+      context: ..
+      dockerfile: Dockerfile
+    image: finally:test
+    container_name: finally-test
+    environment:
+      LLM_MOCK: "true"
+      MASSIVE_API_KEY: ""
+      OPENROUTER_API_KEY: ""
+      FINALLY_DB_PATH: /app/db/finally.db
+    ports:
+      - "8000:8000"
+    # Ephemeral DB dir: each `up` starts from a clean, lazily-seeded database.
+    tmpfs:
+      - /app/db
+    healthcheck:
+      # Gate E2E start-up on the app's own health endpoint (PLAN §8: GET /api/health).
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0) if urllib.request.urlopen('http://localhost:8000/api/health', timeout=3).status==200 else sys.exit(1)"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+      start_period: 20s
+
+  # Optional Playwright runner. Disabled by default (the Integration Tester owns
+  # the actual test suite and may prefer to run Playwright on the host). Enable
+  # with:  docker compose -f test/docker-compose.test.yml --profile e2e up --build
+  playwright:
+    image: mcr.microsoft.com/playwright:v1.49.1-noble
+    profiles: ["e2e"]
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      # Base URL the test suite should target inside the compose network.
+      BASE_URL: "http://app:8000"
+    # The Integration Tester mounts their test project and runs it here, e.g.:
+    #   volumes: [ "./e2e:/e2e" ]
+    #   working_dir: /e2e
+    #   command: ["sh", "-c", "npm ci && npx playwright test"]
+    command: ["sh", "-c", "echo 'Playwright runner ready. Mount tests and override command to run them.' && tail -f /dev/null"]
